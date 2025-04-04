@@ -1,0 +1,40 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'us-west2-docker.pkg.dev/$PROJECT_ID/whisper-flow/app:latest', '.']
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-west2-docker.pkg.dev/$PROJECT_ID/whisper-flow/app:latest']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'whisper-flow'
+      - '--image'
+      - 'us-west2-docker.pkg.dev/$PROJECT_ID/whisper-flow/app:latest'
+      - '--region'
+      - 'us-west2'
+      - '--platform'
+      - 'managed'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--concurrency'
+      - '1'
+      - '--max-instances'
+      - '10'
+      - '--min-instances'
+      - '0'
+      - '--timeout'
+      - '300s'
+      - '--set-env-vars'
+      - 'FIREBASE_PROJECT_ID=arboreal-harbor-455721-p9,FIREBASE_STORAGE_BUCKET=arboreal-harbor-455721-p9.appspot.com,MODEL_VERSION=tiny.en'
+      - '--allow-unauthenticated'
+
+images:
+  - 'us-west2-docker.pkg.dev/$PROJECT_ID/whisper-flow/app:latest' 

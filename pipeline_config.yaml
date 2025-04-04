@@ -1,0 +1,60 @@
+nodes:
+  - name: audio_input
+    type: input
+    config: {}
+
+  - name: speech_to_text
+    type: google_speech
+    config:
+      language_code: "en-US"
+      model: "latest_long"
+      enable_automatic_punctuation: true
+      use_enhanced: true
+    inputs:
+      - audio_input
+
+  - name: whisper_enhancement
+    type: whisper_flow
+    config:
+      model: "large-v3"
+      temperature: 0.2
+      batch_size: 16
+      compute_type: "float16"
+      cache_dir: "/tmp/whisper_cache"
+    inputs:
+      - speech_to_text
+
+  - name: perplexity_chat
+    type: perplexity_ai
+    config:
+      model: "sonar-large-online"
+      focus: "internet"
+      conversation_id: "${SESSION_ID}"  # Dynamic session ID for context retention
+      context_window: 10  # Number of previous messages to retain
+      max_tokens: 2048
+      stream_output: true
+    inputs:
+      - whisper_enhancement
+
+  - name: ui_output
+    type: output
+    config: 
+      format: "streaming"
+      buffer_size: 1024
+    inputs:
+      - perplexity_chat
+
+version: "1.0"
+name: "audio-processing-pipeline"
+description: "Audio processing pipeline with speech-to-text, Whisper enhancement, and Perplexity AI chat integration"
+
+performance:
+  caching:
+    enabled: true
+    ttl: 3600  # Cache TTL in seconds
+  scaling:
+    min_instances: 1
+    max_instances: 10
+  monitoring:
+    enable_tracing: true
+    enable_metrics: true 

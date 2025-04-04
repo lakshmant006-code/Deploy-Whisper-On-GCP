@@ -1,0 +1,49 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: whisper-flow
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "1"  # Minimum number of instances
+        autoscaling.knative.dev/maxScale: "5"  # Maximum number of instances
+        autoscaling.knative.dev/target: "80"    # Target CPU utilization percentage
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-probe-period: "300"  # 5 minutes startup time
+        run.googleapis.com/execution-environment: "gen2"  # Use newer execution environment
+        run.googleapis.com/vpc-access: "enabled"  # Enable VPC access for better networking
+        run.googleapis.com/cloudsql-instances: ""  # Add if using Cloud SQL
+    spec:
+      timeoutSeconds: 3600  # 1 hour timeout for long-running connections
+      containerConcurrency: 30  # Limit concurrent requests
+      containers:
+      - image: gcr.io/mve-environment/whisper-flow
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"  # Increased memory limit
+          requests:
+            cpu: "1"
+            memory: "2Gi"  # Increased minimum memory
+        env:
+        - name: MALLOC_ARENA_MAX
+          value: "2"  # Limit memory fragmentation
+        - name: PYTORCH_CUDA_ALLOC_CONF
+          value: "max_split_size_mb:512"  # Optimize PyTorch memory allocation
+        startupProbe:
+          httpGet:
+            path: /health  # Make sure to implement this endpoint in your FastAPI app
+            port: 8080
+          initialDelaySeconds: 20  # Increased delay for model loading
+          periodSeconds: 30
+          failureThreshold: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 60
+          timeoutSeconds: 5 
